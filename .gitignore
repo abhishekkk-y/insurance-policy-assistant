@@ -13,7 +13,12 @@ __pycache__/
 .ipynb_checkpoints/
 
 # Data files (PDFs can be large)
-data/
+# Keep ChromaDB out (too large, generated file)
+data/chromadb/
+
+# Keep raw data folder tracked but ignore chromadb
+!data/
+!data/*.pdf
 
 # OS files
 .DS_Store

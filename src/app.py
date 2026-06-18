@@ -182,16 +182,31 @@ st.markdown("""
 @st.cache_resource
 def load_resources():
     load_dotenv()
+    
     embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    db_path = os.path.join(os.path.dirname(__file__), "..", "data", "chromadb")
-    chroma_client = chromadb.PersistentClient(path=db_path)
+    
+    chroma_path = "data/chromadb"
+    chroma_client = chromadb.PersistentClient(path=chroma_path)
     collection = chroma_client.get_or_create_collection(
         name="insurance_policies",
         metadata={"hnsw:space": "cosine"}
     )
+    
+    # Auto-run ingestion if collection is empty
+    if collection.count() == 0:
+        st.info("Building document index for first time... please wait")
+        import subprocess
+        subprocess.run(["python", "src/ingest.py"], check=True)
+        # Reload collection after ingestion
+        collection = chroma_client.get_or_create_collection(
+            name="insurance_policies",
+            metadata={"hnsw:space": "cosine"}
+        )
+    
+    ssl_verify = os.getenv("SSL_VERIFY", "true").lower() != "false"
     groq_client = Groq(
         api_key=os.getenv("GROQ_API_KEY"),
-        http_client=httpx.Client(verify=False)
+        http_client=httpx.Client(verify=ssl_verify)
     )
     return embedding_model, collection, groq_client
 
