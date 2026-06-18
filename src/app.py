@@ -183,6 +183,10 @@ st.markdown("""
 def load_resources():
     load_dotenv()
     
+    import re
+    from pypdf import PdfReader
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    
     embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
     
     chroma_path = "data/chromadb"
@@ -193,68 +197,63 @@ def load_resources():
     )
     
     # Auto-run ingestion if collection is empty
-# Auto-run ingestion if collection is empty
-if collection.count() == 0:
-    st.info("⏳ Building document index for first time... please wait (this takes 2-3 minutes)")
-    
-    import re
-    from pypdf import PdfReader
-    from langchain_text_splitters import RecursiveCharacterTextSplitter
-    
-    # Load PDFs
-    data_folder = "data"
-    documents = {}
-    for filename in os.listdir(data_folder):
-        if filename.endswith(".pdf"):
-            filepath = os.path.join(data_folder, filename)
-            reader = PdfReader(filepath)
-            text = ""
-            for page in reader.pages:
-                text += page.extract_text()
-            documents[filename] = text
-    
-    # Clean text
-    def clean_text(text):
-        text = re.sub(r' +', ' ', text)
-        text = re.sub(r'\n{3,}', '\n\n', text)
-        text = re.sub(r'([A-Z]{5,})\n', r'\1.\n\n', text)
-        return text.strip()
-    
-    # Chunk
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150,
-        separators=["\n\n", "\n", ".", "!", "?", " ", ""]
-    )
-    
-    all_chunks = []
-    for filename, text in documents.items():
-        chunks = text_splitter.split_text(clean_text(text))
-        for i, chunk in enumerate(chunks):
-            all_chunks.append({
-                "text": chunk,
-                "source": filename,
-                "chunk_id": i
-            })
-    
-    # Embed
-    texts = [chunk['text'] for chunk in all_chunks]
-    embeddings = embedding_model.encode(texts, batch_size=32)
-    
-    # Store
-    ids = [f"{c['source']}_{c['chunk_id']}" for c in all_chunks]
-    texts_list = [c['text'] for c in all_chunks]
-    embeddings_list = embeddings.tolist()
-    metadatas = [{"source": c['source'], "chunk_id": c['chunk_id']} for c in all_chunks]
-    
-    collection.add(
-        ids=ids,
-        documents=texts_list,
-        embeddings=embeddings_list,
-        metadatas=metadatas
-    )
-    
-    st.success(f"✅ Index built! {collection.count()} chunks indexed.")
+    if collection.count() == 0:
+        st.info("⏳ Building document index for first time... please wait (this takes 2-3 minutes)")
+        
+        # Load PDFs
+        data_folder = "data"
+        documents = {}
+        for filename in os.listdir(data_folder):
+            if filename.endswith(".pdf"):
+                filepath = os.path.join(data_folder, filename)
+                reader = PdfReader(filepath)
+                text = ""
+                for page in reader.pages:
+                    text += page.extract_text()
+                documents[filename] = text
+        
+        # Clean text
+        def clean_text(text):
+            text = re.sub(r' +', ' ', text)
+            text = re.sub(r'\n{3,}', '\n\n', text)
+            text = re.sub(r'([A-Z]{5,})\n', r'\1.\n\n', text)
+            return text.strip()
+        
+        # Chunk
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=150,
+            separators=["\n\n", "\n", ".", "!", "?", " ", ""]
+        )
+        
+        all_chunks = []
+        for filename, text in documents.items():
+            chunks = text_splitter.split_text(clean_text(text))
+            for i, chunk in enumerate(chunks):
+                all_chunks.append({
+                    "text": chunk,
+                    "source": filename,
+                    "chunk_id": i
+                })
+        
+        # Embed
+        texts = [chunk['text'] for chunk in all_chunks]
+        embeddings = embedding_model.encode(texts, batch_size=32)
+        
+        # Store
+        ids = [f"{c['source']}_{c['chunk_id']}" for c in all_chunks]
+        texts_list = [c['text'] for c in all_chunks]
+        embeddings_list = embeddings.tolist()
+        metadatas = [{"source": c['source'], "chunk_id": c['chunk_id']} for c in all_chunks]
+        
+        collection.add(
+            ids=ids,
+            documents=texts_list,
+            embeddings=embeddings_list,
+            metadatas=metadatas
+        )
+        
+        st.success(f"✅ Index built! {collection.count()} chunks indexed.")
     
     ssl_verify = os.getenv("SSL_VERIFY", "true").lower() != "false"
     groq_client = Groq(
@@ -263,7 +262,11 @@ if collection.count() == 0:
     )
     return embedding_model, collection, groq_client
 
-embedding_model, collection, groq_client = load_resources()
+try:
+    embedding_model, collection, groq_client = load_resources()
+except Exception as e:
+    st.error(f"Failed to load resources: {str(e)}")
+    st.stop()
 
 # ── Core RAG function ──────────────────────────────────────────
 def ask_question(question, n_results=3):
