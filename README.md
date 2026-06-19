@@ -1,5 +1,7 @@
 # 🛡️ Insurance Policy Intelligence Assistant
 
+🚀 Live Demo: https://insurance-policy-assistant.streamlit.app/
+
 An AI-powered Q&A system that answers questions from insurance policy 
 documents using Retrieval-Augmented Generation (RAG). Built as a 
 portfolio project targeting AI engineering roles in the insurance industry.
@@ -141,6 +143,22 @@ with grounding instructions to prevent hallucination
 6. **Citation** — Answer displayed with source document references
 
 ---
+
+## 📊 Evaluation Results
+
+Evaluated using an LLM-as-a-judge approach (RAGAS had unresolvable 
+dependency conflicts on Windows — see Project FAQ for details) across 
+15 test questions:
+
+| Metric | Score |
+|---|---|
+| Faithfulness | 0.91 |
+| Answer Relevancy | 0.71 |
+| Overall | 0.81 |
+
+4 of 15 questions returned "could not find" responses — all retrieval 
+failures (system correctly avoided hallucinating), not generation 
+failures. See `evaluation/ragas_results.csv` for full breakdown.
 
 ## ⚠️ What I Learned / What Failed
 

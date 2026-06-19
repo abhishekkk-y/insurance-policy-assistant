@@ -336,7 +336,7 @@ with st.sidebar:
     with col2:
         st.markdown("""
             <div class='stat-box'>
-                <div class='stat-number'>2375</div>
+                <div class='stat-number'>1273</div>
                 <div class='stat-label'>Chunks</div>
             </div>
         """, unsafe_allow_html=True)
